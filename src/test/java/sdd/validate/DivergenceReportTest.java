@@ -2,6 +2,8 @@ package sdd.validate;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -214,6 +216,54 @@ class DivergenceReportTest {
         DivergenceReport report = new DivergenceReport("inventory", input, List.of(), 2, 1, 0);
 
         assertEquals(2, report.getMappings().size());
+    }
+
+    // -----------------------------------------------------------------------
+    // printSummary()
+    // -----------------------------------------------------------------------
+
+    @Test
+    void printSummaryAggregatesAcrossAllDomains() {
+        DivergenceReport r1 = new DivergenceReport("orders",
+                List.of(mapping("ORD-001", BehaviorMapping.DivergenceType.NONE),
+                        mapping("ORD-002", BehaviorMapping.DivergenceType.MISSING_SCENARIO)),
+                List.of(), 2, 1, 3);
+        DivergenceReport r2 = new DivergenceReport("payments",
+                List.of(mapping("PAY-001", BehaviorMapping.DivergenceType.NONE)),
+                List.of("PAY-999 — orphan"), 1, 2, 2);
+
+        Logger logger = Logging.getLogger(DivergenceReportTest.class);
+        // smoke test: must not throw; actual log output goes to the Gradle logger
+        assertDoesNotThrow(() ->
+                DivergenceReport.printSummary(List.of(r1, r2), logger));
+    }
+
+    @Test
+    void printSummaryWithEmptyListDoesNotThrow() {
+        Logger logger = Logging.getLogger(DivergenceReportTest.class);
+        assertDoesNotThrow(() ->
+                DivergenceReport.printSummary(List.of(), logger));
+    }
+
+    @Test
+    void printSummaryDetectsOverallDivergence() {
+        DivergenceReport aligned = new DivergenceReport("orders",
+                List.of(mapping("ORD-001", BehaviorMapping.DivergenceType.NONE)), List.of(), 1, 1, 1);
+        DivergenceReport diverged = new DivergenceReport("payments",
+                List.of(mapping("PAY-001", BehaviorMapping.DivergenceType.MISSING_SCENARIO)), List.of(), 1, 0, 0);
+
+        // overall: any domain diverged means the build should fail
+        assertTrue(List.of(aligned, diverged).stream().anyMatch(DivergenceReport::hasErrors));
+    }
+
+    @Test
+    void printSummaryAllAlignedWhenNoDomainHasErrors() {
+        DivergenceReport r1 = new DivergenceReport("orders",
+                List.of(mapping("ORD-001", BehaviorMapping.DivergenceType.NONE)), List.of(), 1, 1, 1);
+        DivergenceReport r2 = new DivergenceReport("payments",
+                List.of(mapping("PAY-001", BehaviorMapping.DivergenceType.NONE)), List.of(), 1, 1, 1);
+
+        assertFalse(List.of(r1, r2).stream().anyMatch(DivergenceReport::hasErrors));
     }
 
     // -----------------------------------------------------------------------

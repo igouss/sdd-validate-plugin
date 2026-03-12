@@ -103,6 +103,26 @@ public class DivergenceReport {
         Files.writeString(outputPath, gson.toJson(report));
     }
 
+    public static void printSummary(List<DivergenceReport> reports, Logger logger) {
+        for (DivergenceReport report : reports) {
+            report.printConsole(logger);
+        }
+
+        int totalBehaviors = reports.stream().mapToInt(r -> r.behaviorCount).sum();
+        int totalErrors = (int) reports.stream()
+            .flatMap(r -> r.mappings.stream())
+            .filter(m -> m.divergence() != BehaviorMapping.DivergenceType.NONE)
+            .count();
+        int totalOrphans = reports.stream().mapToInt(r -> r.orphanScenarioTitles.size()).sum();
+        boolean anyErrors = reports.stream().anyMatch(DivergenceReport::hasErrors);
+
+        logger.lifecycle("══════════════════════════════════");
+        logger.lifecycle("OVERALL: {} domains  |  {} behaviors  |  {} divergences  |  {} orphans  |  {}",
+            reports.size(), totalBehaviors, totalErrors, totalOrphans,
+            anyErrors ? "DIVERGED" : "ALL ALIGNED");
+        logger.lifecycle("");
+    }
+
     private static String extractCommand(String when) {
         int paren = when.indexOf('(');
         if (paren > 0) return when.substring(0, paren);

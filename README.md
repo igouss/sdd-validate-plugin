@@ -1,12 +1,12 @@
 # sdd-validate
 
-Gradle plugin that validates alignment between a domain model, Gauge scenarios, and Java step implementations.
+Gradle plugin that validates alignment between domain models, Gauge scenarios, and Java step implementations.
 
 Fails the build when the code drifts from the spec.
 
 ## What it checks
 
-Given three artifacts:
+Given three artifacts per domain:
 
 1. **Domain model** — `specs/models/<domain>.domain.json` — behaviors with `id`, `given`, `when`, `then`
 2. **Gauge specs** — `specs/gauge/<domain>/*.spec` — scenarios headed `## BEHAVIOR-ID — title`
@@ -19,6 +19,8 @@ It detects:
 | ERROR | `MISSING_SCENARIO` | Domain behavior has no matching Gauge scenario |
 | ERROR | `MISSING_STEP_IMPL` | Scenario steps have no matching `@Step` annotation |
 | WARNING | Orphan scenario | Gauge scenario has no matching domain behavior |
+
+All `*.domain.json` files under `specs/models/` are discovered and analyzed automatically.
 
 ## Setup
 
@@ -37,13 +39,16 @@ plugins {
 ## Configuration
 
 ```groovy
-sddValidate {
-    domain           = 'inventory'       // domain name (default: 'inventory')
+sddValidation {
     specsDir         = 'specs'           // root specs directory (default: 'specs')
     stepsDir         = 'src/test/java'   // Java step implementations (default: 'src/test/java')
     failOnDivergence = true              // fail build on errors (default: true)
+    includeDomains   = ['orders']        // optional whitelist — only analyze these domains
+    excludeDomains   = ['legacy']        // optional blacklist — skip these domains
 }
 ```
+
+`includeDomains` and `excludeDomains` are both empty by default, meaning all discovered domains are analyzed. When both are set, `includeDomains` is applied first, then `excludeDomains` removes from that set.
 
 ## Running
 
@@ -54,43 +59,54 @@ sddValidate {
 Output:
 
 ```
-SDD Divergence Report — inventory
+SDD Divergence Report — orders
 ══════════════════════════════════
-  Behaviors: 3  |  Scenarios: 2  |  Step impls: 5
+  Behaviors: 2  |  Scenarios: 1  |  Step impls: 5
 
-  INV-001   addItem   → "item can be added to inventory"   OK
-  INV-002   removeItem   → (none)   MISSING SCENARIO
-  INV-003   listItems   → "list all items"   MISSING STEP IMPL (1)
+  ORD-001   placeOrder   → "order can be placed"   OK
+  ORD-002   cancelOrder  → (none)                  MISSING SCENARIO
 
-  Missing scenarios: 1  |  Missing step impls: 1  |  Orphans: 0
+  Missing scenarios: 1  |  Missing step impls: 0  |  Orphans: 0
   RESULT: DIVERGED
+
+SDD Divergence Report — payments
+══════════════════════════════════
+  Behaviors: 1  |  Scenarios: 1  |  Step impls: 5
+
+  PAY-001   processPayment   → "payment is processed"   OK
+
+  Missing scenarios: 0  |  Missing step impls: 0  |  Orphans: 0
+  RESULT: ALL ALIGNED
+
+══════════════════════════════════
+OVERALL: 2 domains  |  3 behaviors  |  1 divergences  |  0 orphans  |  DIVERGED
 ```
 
-JSON report written to `<specsDir>/reports/<domain>-divergence.json`.
+Per-domain JSON reports written to `<specsDir>/reports/<domain>-divergence.json`.
 
 ## File conventions
 
-**Domain JSON:**
+**Domain JSON** — `specs/models/<domain>.domain.json`:
 ```json
 {
   "behaviors": [
-    { "id": "INV-001", "given": "empty inventory", "when": "addItem(sku)", "then": "item is stored" }
+    { "id": "ORD-001", "given": "empty cart", "when": "placeOrder(items)", "then": "order is created" }
   ]
 }
 ```
 
 **Gauge spec scenario heading** — must use `##` and format `## ID — title`:
 ```
-## INV-001 — item can be added to inventory
-* the inventory is empty
-* I add item "SKU-1"
-* the inventory contains 1 items
+## ORD-001 — order can be placed
+* the cart contains item "widget"
+* the user places an order
+* an order is created with 1 item
 ```
 
 **Step implementation:**
 ```java
-@Step("the inventory contains <count> items")
-public void inventoryContainsItems(int count) { ... }
+@Step("the cart contains item <name>")
+public void cartContainsItem(String name) { ... }
 ```
 
 Step matching: literal segments of the `@Step` value are matched exactly; `<param>` placeholders match any text.

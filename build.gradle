@@ -1,0 +1,56 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+    id 'pmd'
+    id 'com.github.spotbugs' version '6.0.9'
+}
+
+group = 'sdd'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.10.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+pmd {
+    toolVersion = '7.0.0'
+    ruleSetFiles = files('config/pmd/pmd.xml')
+    ruleSets = []
+    consoleOutput = true
+}
+
+spotbugs {
+    toolVersion = '4.9.3'
+    ignoreFailures = false
+    excludeFilter = file('config/spotbugs/exclude.xml')
+}
+
+spotbugsMain {
+    reports {
+        html { required = true }
+        xml { required = true }
+    }
+}
+
+gradlePlugin {
+    plugins {
+        sddValidate {
+            id = 'sdd.validate'
+            implementationClass = 'sdd.validate.SddValidatePlugin'
+        }
+    }
+}

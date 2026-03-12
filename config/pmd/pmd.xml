@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ruleset name="SDD Validate Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>PMD rules for sdd-validate-plugin</description>
+    <rule ref="category/java/bestpractices.xml"/>
+    <rule ref="category/java/errorprone.xml"/>
+    <rule ref="category/java/codestyle.xml">
+        <!-- too noisy for a tool project -->
+        <exclude name="OnlyOneReturn"/>
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <exclude name="DefaultPackage"/>
+    </rule>
+</ruleset>
